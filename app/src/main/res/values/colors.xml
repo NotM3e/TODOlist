@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Tla -->
+    <color name="background_primary">#1A1A2E</color>
+    <color name="background_card">#16213E</color>
+    <color name="background_input">#0F3460</color>
+
+    <!-- Akcent -->
+    <color name="accent">#4A90D9</color>
+    <color name="accent_dark">#3A7BC8</color>
+
+    <!-- Tekst -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8899AA</color>
+    <color name="text_hint">#556677</color>
+
+    <!-- Priorytety -->
+    <color name="priority_low">#4CAF50</color>
+    <color name="priority_medium">#FFC107</color>
+    <color name="priority_high">#F44336</color>
+
+    <!-- Statusy -->
+    <color name="status_done">#4CAF50</color>
+    <color name="status_failed">#CF6679</color>
 </resources>

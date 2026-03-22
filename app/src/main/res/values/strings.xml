@@ -1,3 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TODOlist</string>
+
+    <!-- Nawigacja -->
+    <string name="nav_tasks">Zadania</string>
+    <string name="nav_calendar">Kalendarz</string>
+
+    <!-- MainView -->
+    <string name="tasks_active">Aktywne</string>
+    <string name="tasks_completed">Ukończone</string>
+    <string name="no_tasks">Brak zadań</string>
+
+    <!-- Edytor -->
+    <string name="editor_title">Edytor Zadania</string>
+    <string name="task_title_hint">Tytuł zadania</string>
+    <string name="task_desc_hint">Opis (opcjonalnie)</string>
+    <string name="btn_confirm">Potwierdź Zadanie</string>
+    <string name="btn_save">Zapisz Zmiany</string>
+    <string name="btn_cancel">Anuluj</string>
+
+    <!-- Priorytet -->
+    <string name="priority_none">Brak</string>
+    <string name="priority_low">Niski</string>
+    <string name="priority_medium">Średni</string>
+    <string name="priority_high">Wysoki</string>
+
+    <!-- Status -->
+    <string name="status_todo">Niezrobione</string>
+    <string name="status_done">Skończone</string>
+    <string name="status_failed">Nieudane</string>
+
+    <!-- Draft -->
+    <string name="draft_dialog_title">Szkic</string>
+    <string name="draft_dialog_message">Masz niezapisany szkic zadania. Kontynuować?</string>
+    <string name="yes">Tak</string>
+    <string name="no">Nie</string>
 </resources>
