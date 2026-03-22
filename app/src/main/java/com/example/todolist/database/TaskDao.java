@@ -17,7 +17,7 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status = 0 ORDER BY date ASC")
     List<Task> getAllActive();
 
-    @Query("SELECT * FROM tasks WHERE status != 0 AND createdAt >= :cutoff ORDER BY date DESC")
+    @Query("SELECT * FROM tasks WHERE status != 0 AND date >= :cutoff ORDER BY date DESC")
     List<Task> getCompletedSince(long cutoff);
 
     // --- Zapytania dla CalendarView ---
