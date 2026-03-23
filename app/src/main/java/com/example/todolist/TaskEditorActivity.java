@@ -38,7 +38,7 @@ public class TaskEditorActivity extends AppCompatActivity {
     private MaterialButton btnStatusTodo, btnStatusFailed, btnStatusDone;
     private MaterialButton btnConfirm;
     private View sectionStatus;
-    private TextView badgeSaved;
+    private ImageButton btnDelete;
 
     // ========== Dane ==========
     private TaskDao taskDao;
@@ -93,7 +93,7 @@ public class TaskEditorActivity extends AppCompatActivity {
         btnStatusDone    = findViewById(R.id.btn_status_done);
         btnConfirm       = findViewById(R.id.btn_confirm);
         sectionStatus    = findViewById(R.id.section_status);
-        badgeSaved       = findViewById(R.id.badge_saved);
+        btnDelete        = findViewById(R.id.btn_delete);
     }
 
     private void determineMode() {
@@ -103,7 +103,7 @@ public class TaskEditorActivity extends AppCompatActivity {
         if (isEditMode) {
             currentTask = taskDao.getById(taskId);
             sectionStatus.setVisibility(View.VISIBLE);
-            badgeSaved.setVisibility(View.VISIBLE);
+            btnDelete.setVisibility(View.VISIBLE);
             btnConfirm.setText(R.string.btn_save);
         } else {
             // Wstepne wypelnienie daty (np. z widoku kalendarza)
@@ -232,6 +232,7 @@ public class TaskEditorActivity extends AppCompatActivity {
 
         // --- Przyciski akcji ---
         btnConfirm.setOnClickListener(v -> saveTask());
+        btnDelete.setOnClickListener(v -> showDeleteDialog());
         findViewById(R.id.btn_cancel).setOnClickListener(v -> handleExit());
         findViewById(R.id.btn_back).setOnClickListener(v -> handleExit());
     }
@@ -299,6 +300,22 @@ public class TaskEditorActivity extends AppCompatActivity {
     // ========================================================
     //  ZAPIS ZADANIA
     // ========================================================
+
+    /**
+     * Wyswietla dialog potwierdzenia usuniecia zadania.
+     * Dostepny tylko w trybie edycji.
+     */
+    private void showDeleteDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Usunięcie zadania")
+                .setMessage("Czy na pewno chcesz usunąć to zadanie? Tej operacji nie można cofnąć.")
+                .setPositiveButton("Usuń", (dialog, which) -> {
+                    taskDao.deleteById(currentTask.getId());
+                    finish();
+                })
+                .setNegativeButton(R.string.btn_cancel, null)
+                .show();
+    }
 
     private void saveTask() {
         String title = inputTitle.getText().toString().trim();
