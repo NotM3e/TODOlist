@@ -35,4 +35,15 @@
     <string name="draft_dialog_message">Masz niezapisany szkic zadania. Kontynuować?</string>
     <string name="yes">Tak</string>
     <string name="no">Nie</string>
+
+    <!-- Etykiety sekcji edytora -->
+    <string name="label_title">TYTUŁ</string>
+    <string name="label_description">OPIS</string>
+    <string name="label_date">DATA</string>
+    <string name="label_time">GODZINA</string>
+    <string name="label_priority">PRIORYTET</string>
+    <string name="label_status">STATUS</string>
+    <string name="saved_badge">Zapisano</string>
+    <string name="select_date">Wybierz datę</string>
+    <string name="no_time">Brak</string>
 </resources>

@@ -56,9 +56,6 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
             startActivity(intent);
         });
 
-        // TODO: Usunac po implementacji edytora (dzien 3)
-        insertTestData();
-
         return view;
     }
 
@@ -196,45 +193,5 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
         }
         taskDao.update(task);
         loadTasks();
-    }
-
-    // ========== DANE TESTOWE ==========
-    // TODO: Usunac cala metode po implementacji edytora (dzien 3)
-
-    private void insertTestData() {
-        if (!taskDao.getAllActive().isEmpty()) return;
-
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        long today = cal.getTimeInMillis();
-        long tomorrow = today + 86400000L;
-        long dayAfter = today + 2 * 86400000L;
-
-        cal.set(Calendar.HOUR_OF_DAY, 17);
-        long time1700 = cal.getTimeInMillis();
-
-        Task t1 = new Task("Pierwsza praca nad projektem", today);
-        t1.setPriority(3);
-        t1.setTime(time1700);
-        taskDao.insert(t1);
-
-        Task t2 = new Task("Dalsza pracja nad projektem", tomorrow);
-        t2.setPriority(2);
-        taskDao.insert(t2);
-
-        Task t3 = new Task("Pokazanie projektu", dayAfter);
-        t3.setPriority(1);
-        taskDao.insert(t3);
-
-        Task t4 = new Task("Przygotować propozycję projektu", today);
-        t4.setStatus(1); // SKONCZONE
-        taskDao.insert(t4);
-
-        Task t5 = new Task("Zrobić salto", today);
-        t5.setStatus(2); // NIEUDANE
-        taskDao.insert(t5);
     }
 }
