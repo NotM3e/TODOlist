@@ -46,4 +46,13 @@
     <string name="saved_badge">Zapisano</string>
     <string name="select_date">Wybierz datę</string>
     <string name="no_time">Brak</string>
+
+    <!-- Kalendarz -->
+    <string name="no_tasks_for_day">Brak zadań na ten dzień</string>
+    <plurals name="task_count">
+        <item quantity="one">%d Zadanie</item>
+        <item quantity="few">%d Zadania</item>
+        <item quantity="many">%d Zadań</item>
+        <item quantity="other">%d Zadań</item>
+    </plurals>
 </resources>

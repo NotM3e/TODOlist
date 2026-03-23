@@ -1,14 +1,190 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_primary">
 
-    <TextView
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- ===== Naglowek ===== -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="24dp"
+            android:text="@string/nav_calendar"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <!-- ===== Nawigacja miesiaca ===== -->
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <ImageButton
+                android:id="@+id/btn_prev_month"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Poprzedni miesiąc"
+                android:src="@drawable/ic_chevron_left" />
+
+            <TextView
+                android:id="@+id/text_month_year"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_next_month"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Następny miesiąc"
+                android:src="@drawable/ic_chevron_right" />
+
+        </RelativeLayout>
+
+        <!-- ===== Naglowki dni tygodnia ===== -->
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp">
+
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Pn" android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Wt" android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Śr" android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Cz" android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Pt" android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="So" android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Nd" android:textColor="@color/text_secondary" android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- ===== Siatka kalendarza ===== -->
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_calendar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:nestedScrollingEnabled="false"
+            android:paddingHorizontal="4dp" />
+
+        <!-- ===== Separator ===== -->
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:background="@color/background_input" />
+
+        <!-- ===== Naglowek wybranego dnia ===== -->
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <TextView
+                android:id="@+id/text_selected_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/text_task_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+        </RelativeLayout>
+
+        <!-- ===== Lista zadan wybranego dnia ===== -->
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_day_tasks"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="80dp" />
+
+        <!-- Widoczny gdy brak zadan dla wybranego dnia -->
+
+        <TextView
+            android:id="@+id/text_empty_day"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/no_tasks_for_day"
+            android:textColor="@color/text_hint"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- ===== FAB ===== -->
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_calendar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="@string/nav_calendar"
-        android:textColor="@color/text_secondary"
-        android:textSize="18sp" />
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_fab_add"
+        app:backgroundTint="@color/accent"
+        app:tint="@color/text_primary" />
+
 </FrameLayout>
