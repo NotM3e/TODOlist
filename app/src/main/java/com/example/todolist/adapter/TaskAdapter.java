@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -69,6 +70,11 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         holder.checkbox.setOnCheckedChangeListener(null);
         holder.checkbox.setChecked(task.getStatus() != 0);
         holder.checkbox.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (listener != null) listener.onCheckboxClick(task);
+        });
+
+        // Klikniecie krzyzyka (nieudane) tez przywraca status
+        holder.iconFailed.setOnClickListener(v -> {
             if (listener != null) listener.onCheckboxClick(task);
         });
     }
@@ -142,19 +148,27 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
             holder.title.setPaintFlags(
                     holder.title.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            holder.checkbox.setVisibility(View.VISIBLE);
+            holder.iconFailed.setVisibility(View.GONE);
             CompoundButtonCompat.setButtonTintList(holder.checkbox,
                     ColorStateList.valueOf(ContextCompat.getColor(context, R.color.accent)));
         } else {
-            // Ukonczone/nieudane – przekreslony tekst, zmieniony kolor checkboxa
+            // Ukonczone/nieudane – przekreslony tekst
             holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_secondary));
             holder.title.setPaintFlags(
                     holder.title.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
 
-            int statusColor = (task.getStatus() == 1)
-                    ? R.color.status_done     // zielony dla skonczonych
-                    : R.color.status_failed;  // czerwony dla nieudanych
-            CompoundButtonCompat.setButtonTintList(holder.checkbox,
-                    ColorStateList.valueOf(ContextCompat.getColor(context, statusColor)));
+            if (task.getStatus() == 1) {
+                // Skonczone – zielony checkbox z ptaszkiem
+                holder.checkbox.setVisibility(View.VISIBLE);
+                holder.iconFailed.setVisibility(View.GONE);
+                CompoundButtonCompat.setButtonTintList(holder.checkbox,
+                        ColorStateList.valueOf(ContextCompat.getColor(context, R.color.status_done)));
+            } else {
+                // Nieudane – czerwony krzyzyk zamiast checkboxa
+                holder.checkbox.setVisibility(View.GONE);
+                holder.iconFailed.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -202,11 +216,13 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
     static class TaskViewHolder extends RecyclerView.ViewHolder {
         CheckBox checkbox;
+        ImageView iconFailed;
         TextView title, priority, date;
 
         TaskViewHolder(@NonNull View itemView) {
             super(itemView);
             checkbox = itemView.findViewById(R.id.checkbox_status);
+            iconFailed = itemView.findViewById(R.id.icon_failed);
             title = itemView.findViewById(R.id.text_title);
             priority = itemView.findViewById(R.id.text_priority);
             date = itemView.findViewById(R.id.text_date);
