@@ -1,6 +1,7 @@
 package com.example.todolist;
 
 import android.os.Bundle;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
+        Log.d("DEBUG", String.valueOf(System.currentTimeMillis()));
     }
 
     // Podmienia fragment w kontenerze

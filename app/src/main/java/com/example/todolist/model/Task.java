@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey;
 public class Task {
 
     @PrimaryKey(autoGenerate = true)
-    private int id;
+    private int id;         // inkrementowany, -1 = nowo utworzony
 
     @NonNull
     private String title;

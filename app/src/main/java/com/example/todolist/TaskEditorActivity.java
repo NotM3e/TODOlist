@@ -106,7 +106,7 @@ public class TaskEditorActivity extends AppCompatActivity {
             btnDelete.setVisibility(View.VISIBLE);
             btnConfirm.setText(R.string.btn_save);
         } else {
-            // Wstepne wypelnienie daty (np. z widoku kalendarza)
+            // Wstepne wypelnienie daty (z widoku kalendarza)
             long prefillDate = getIntent().getLongExtra("prefill_date", 0);
             if (prefillDate != 0) {
                 selectedDate = prefillDate;

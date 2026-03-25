@@ -49,7 +49,7 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
         setupRecyclerViews();
         setupSwipeGestures();
 
-        // FAB – otwiera edytor w trybie tworzenia (bez task_id)
+        // FAB – otwiera edytor w trybie tworzenia
         FloatingActionButton fab = view.findViewById(R.id.fab_add);
         fab.setOnClickListener(v -> {
             Intent intent = new Intent(requireContext(), TaskEditorActivity.class);

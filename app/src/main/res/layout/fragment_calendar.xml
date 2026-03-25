@@ -70,33 +70,61 @@
             android:paddingHorizontal="4dp">
 
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="Pn" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Pn"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="Wt" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Wt"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="Śr" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Śr"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="Cz" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Cz"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="Pt" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Pt"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="So" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="So"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
             <TextView
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center"
-                android:text="Nd" android:textColor="@color/text_secondary" android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Nd"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
 
         </LinearLayout>
 

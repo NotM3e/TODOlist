@@ -64,9 +64,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             if (listener != null) listener.onTaskClick(task);
         });
 
-        // Wazne: usuwamy listener PRZED ustawieniem stanu checkboxa.
-        // Bez tego, przy przewijaniu listy RecyclerView "recykluje" widoki
-        // i wywolalby listener ze starymi danymi.
+        // Usuniecie listener PRZED ustawieniem stanu checkboxa.
         holder.checkbox.setOnCheckedChangeListener(null);
         holder.checkbox.setChecked(task.getStatus() != 0);
         holder.checkbox.setOnCheckedChangeListener((btn, isChecked) -> {

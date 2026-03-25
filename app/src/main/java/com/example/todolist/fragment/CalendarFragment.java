@@ -2,6 +2,7 @@ package com.example.todolist.fragment;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,8 +44,6 @@ public class CalendarFragment extends Fragment
     private CalendarAdapter calendarAdapter;
     private TaskAdapter taskAdapter;
     private TaskDao taskDao;
-
-    // Aktualnie wyswietlany miesiac
     private int currentYear, currentMonth;
 
     // Zaznaczony dzien
@@ -73,6 +72,7 @@ public class CalendarFragment extends Fragment
         Calendar today = Calendar.getInstance();
         currentYear = today.get(Calendar.YEAR);
         currentMonth = today.get(Calendar.MONTH);
+//        Log.d("DEBUG", String.valueOf(currentYear) + "-" + String.valueOf(currentMonth));
 
         // FAB – otwiera edytor z wstepnie wypelniona data zaznaczonego dnia
         FloatingActionButton fab = view.findViewById(R.id.fab_add_calendar);
@@ -130,7 +130,7 @@ public class CalendarFragment extends Fragment
                 currentMonth = 11;
                 currentYear--;
             }
-            // Reset zaznaczenia – nowy miesiac, autoSelectDay wybierze dzien
+            // Reset zaznaczonego dnia – nowy miesiac, autoSelectDay wybierze dzien
             selectedPosition = -1;
             selectedDayTimestamp = 0;
             loadMonth();
@@ -142,6 +142,7 @@ public class CalendarFragment extends Fragment
                 currentMonth = 0;
                 currentYear++;
             }
+            // Reset zaznaczonego dnia – nowy miesiac, autoSelectDay wybierze dzien
             selectedPosition = -1;
             selectedDayTimestamp = 0;
             loadMonth();
@@ -159,6 +160,7 @@ public class CalendarFragment extends Fragment
         SimpleDateFormat sdf = new SimpleDateFormat("LLLL yyyy", Locale.getDefault());
         String monthName = sdf.format(cal.getTime());
         textMonthYear.setText(monthName.substring(0, 1).toUpperCase() + monthName.substring(1));
+//        Log.d("DEBUG", monthName);
 
         // --- Generowanie komorek kalendarza ---
         List<CalendarAdapter.CalendarDay> days = generateDays();
@@ -174,13 +176,13 @@ public class CalendarFragment extends Fragment
         // --- Zaznaczenie dnia ---
         if (selectedDayTimestamp != 0) {
             // Proba ponownego zaznaczenia tego samego dnia (po powrocie z edytora)
-            boolean reselected = false;
+            boolean reselected = false; // TODO blad ponownego ustawiania
             for (int i = 0; i < days.size(); i++) {
                 CalendarAdapter.CalendarDay day = days.get(i);
                 if (day.isCurrentMonth && day.timestamp == selectedDayTimestamp) {
                     day.isSelected = true;
                     selectedPosition = i;
-                    reselected = true;
+//                    reselected = true;
                     break;
                 }
             }
@@ -213,10 +215,7 @@ public class CalendarFragment extends Fragment
 
         int daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
 
-        // Oblicz offset – ile komorek z poprzedniego miesiaca trzeba dodac
-        // aby pierwszy rzad zaczynał sie od poniedzialku.
-        // Java: SUNDAY=1, MONDAY=2, ..., SATURDAY=7
-        // Nasz uklad: Pn=0, Wt=1, ..., Nd=6
+        // Pierwszy dzien miesiaca wzgledem dnia tygodnia
         int firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
         int offset = (firstDayOfWeek - Calendar.MONDAY + 7) % 7;
 
