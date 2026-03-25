@@ -11,7 +11,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.todolist"
+        applicationId = "com.example.todolist.alpha1"
         minSdk = 30
         targetSdk = 36
         versionCode = 1
