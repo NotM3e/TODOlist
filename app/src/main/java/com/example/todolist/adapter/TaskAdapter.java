@@ -26,7 +26,6 @@ import java.util.Locale;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
-    // Interfejs do obsługi kliknięć, który implementuje Fragment
     public interface OnTaskActionListener {
         void onTaskClick(Task task);
         void onCheckboxClick(Task task);
@@ -43,7 +42,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     @NonNull
     @Override
     public TaskViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Pompowanie układu pojedynczego elementu listy
+        // Pompowanie układu elementu listy
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_task, parent, false);
         return new TaskViewHolder(view);
@@ -57,7 +56,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         // Ustawienie tytulu
         holder.title.setText(task.getTitle());
 
-        // --- Obsługa priorytetu (kolorowe etykiety) ---
+        // Kolorowe etykiety
         if (task.getPriority() == 0 || task.getStatus() != 0) {
             holder.priority.setVisibility(View.GONE);
         } else {
@@ -85,13 +84,13 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             }
         }
 
-        // --- Obsługa daty (formatowanie relatywne) ---
+        // Obsługa daty
         if (task.getStatus() != 0) {
             holder.date.setVisibility(View.GONE);
         } else {
             holder.date.setVisibility(View.VISIBLE);
             
-            // Logika formatowania daty (Dzisiaj, Jutro lub dd.MM)
+            // Logika formatowania daty
             Calendar taskCal = Calendar.getInstance();
             taskCal.setTimeInMillis(task.getDate());
 
@@ -124,7 +123,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             holder.date.setText(dateStr);
         }
 
-        // --- Obsługa wyglądu w zależności od statusu (przekreślenie) ---
+        // Obsługa przekreślenia tekstu
         if (task.getStatus() == 0) {
             // Aktywne
             holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
@@ -142,8 +141,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             CompoundButtonCompat.setButtonTintList(holder.checkbox, ColorStateList.valueOf(ContextCompat.getColor(context, statusColor)));
         }
 
-        // --- Obsługa kliknięć ---
-
         // Kliknięcie w całą kartę
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -154,8 +151,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             }
         });
 
-        // Obsługa checkboxa (zmiana statusu)
-        holder.checkbox.setOnCheckedChangeListener(null); // Ważne: resetujemy listener przed zmianą stanu (recykling widoków)
+        // Zmiana statusu przez checkbox
+        holder.checkbox.setOnCheckedChangeListener(null); // resetujemy listener
         holder.checkbox.setChecked(task.getStatus() != 0);
         holder.checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -172,7 +169,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         return taskList.size();
     }
 
-    // Metoda do odświeżania listy przez Fragment
+    // Odświeżania listy przez Fragment
     public void updateTasks(List<Task> tasks) {
         this.taskList = tasks;
         notifyDataSetChanged();

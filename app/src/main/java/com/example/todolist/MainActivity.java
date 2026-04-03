@@ -19,7 +19,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // --- Inicjalizacja widoków ---
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
 
         // Domyślnie przy starcie aplikacji pokazujemy listę zadań
@@ -31,21 +30,18 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // --- Obsługa dolnej nawigacji ---
-        // Używamy klasy anonimowej zamiast lambdy, aby kod był bardziej czytelny dla początkujących
         bottomNav.setOnItemSelectedListener(new NavigationBarView.OnItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 Fragment fragment = null;
                 int itemId = item.getItemId();
 
-                // Sprawdzanie ID klikniętego elementu menu
                 if (itemId == R.id.nav_tasks) {
                     fragment = new TaskListFragment();
                 } else if (itemId == R.id.nav_calendar) {
                     fragment = new CalendarFragment();
                 }
 
-                // Podmiana fragmentu w kontenerze, jeśli został wybrany
                 if (fragment != null) {
                     getSupportFragmentManager()
                             .beginTransaction()

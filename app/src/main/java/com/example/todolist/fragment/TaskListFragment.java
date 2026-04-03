@@ -42,27 +42,26 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_task_list, container, false);
 
-        // --- Inicjalizacja bazy danych ---
         taskDao = AppDatabase.getInstance(requireContext()).taskDao();
 
-        // --- Inicjalizacja widoków ---
+        // Widoki:
         recyclerActive = view.findViewById(R.id.recycler_active);
         recyclerCompleted = view.findViewById(R.id.recycler_completed);
         textActiveCount = view.findViewById(R.id.text_active_count);
         textEmptyActive = view.findViewById(R.id.text_empty_active);
         textCompletedHeader = view.findViewById(R.id.text_completed_header);
 
-        // --- Konfiguracja RecyclerView (Active) ---
+        // Konfiguracja RecyclerView (Active):
         activeAdapter = new TaskAdapter(new ArrayList<Task>(), this);
         recyclerActive.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerActive.setAdapter(activeAdapter);
 
-        // --- Konfiguracja RecyclerView (Completed) ---
+        // Konfiguracja RecyclerView (Completed):
         completedAdapter = new TaskAdapter(new ArrayList<Task>(), this);
         recyclerCompleted.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerCompleted.setAdapter(completedAdapter);
 
-        // --- Przycisk FAB (Dodawanie nowego zadania) ---
+        // Przycisk FAB:
         FloatingActionButton fab = view.findViewById(R.id.fab_add);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -72,7 +71,7 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
             }
         });
 
-        // --- Obsługa gestów swipe (przesuwanie w lewo/prawo) ---
+        // Obsługa gestów swipe:
         ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
@@ -85,10 +84,10 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
                 Task task = activeAdapter.getTaskAt(position);
 
                 if (direction == ItemTouchHelper.LEFT) {
-                    // Swipe w lewo - oznaczamy jako zakończone
+                    // Udane
                     task.setStatus(1);
                 } else if (direction == ItemTouchHelper.RIGHT) {
-                    // Swipe w prawo - oznaczamy jako nieudane
+                    // Nieudane
                     task.setStatus(2);
                 }
 
@@ -102,11 +101,9 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
                 Paint paint = new Paint();
 
                 if (dX < 0) {
-                    // Rysowanie tła dla zakończenia zadania (zielony)
                     paint.setColor(ContextCompat.getColor(requireContext(), R.color.status_done));
                     c.drawRect(itemView.getRight() + dX, itemView.getTop(), itemView.getRight(), itemView.getBottom(), paint);
                 } else if (dX > 0) {
-                    // Rysowanie tła dla nieudanego zadania (czerwony)
                     paint.setColor(ContextCompat.getColor(requireContext(), R.color.status_failed));
                     c.drawRect(itemView.getLeft(), itemView.getTop(), itemView.getLeft() + dX, itemView.getBottom(), paint);
                 }
@@ -129,11 +126,11 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
         loadTasksFromDatabase();
     }
 
-    // --- Pobieranie i wyświetlanie zadań z bazy danych ---
+    // Pobieranie i wyświetlanie zadań z bazy danych:
     private void loadTasksFromDatabase() {
         List<Task> activeTasks = taskDao.getAllActive();
 
-        // Pobieramy ukończone zadania z ostatnich 7 dni
+        // Pobieranie ukończonych zadań z ostatnich 7 dni
         long sevenDaysMillis = 7L * 24 * 60 * 60 * 1000;
         long cutoffTime = System.currentTimeMillis() - sevenDaysMillis;
         List<Task> completedTasks = taskDao.getCompletedSince(cutoffTime);
@@ -156,11 +153,8 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
         }
     }
 
-    // --- Implementacja metod z interfejsu TaskAdapter.OnTaskActionListener ---
-
     @Override
     public void onTaskClick(Task task) {
-        // Kliknięcie w zadanie otwiera edytor
         Intent intent = new Intent(requireContext(), TaskEditorActivity.class);
         intent.putExtra("task_id", task.getId());
         startActivity(intent);
@@ -168,11 +162,12 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
 
     @Override
     public void onCheckboxClick(Task task) {
-        // Kliknięcie w checkbox zmienia status zadania
         if (task.getStatus() == 0) {
-            task.setStatus(1); // Z aktywnego na ukończone
+            // Udane
+            task.setStatus(1);
         } else {
-            task.setStatus(0); // Z ukończonego/nieudanego na aktywne
+            // Nieudane
+            task.setStatus(0);
         }
         taskDao.update(task);
         loadTasksFromDatabase();
