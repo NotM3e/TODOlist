@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -25,7 +26,7 @@ import java.util.Locale;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
-    // Interfejs komunikacji z fragmentem – fragment implementuje te metody
+    // Interfejs do obsługi kliknięć, który implementuje Fragment
     public interface OnTaskActionListener {
         void onTaskClick(Task task);
         void onCheckboxClick(Task task);
@@ -42,6 +43,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     @NonNull
     @Override
     public TaskViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Pompowanie układu pojedynczego elementu listy
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_task, parent, false);
         return new TaskViewHolder(view);
@@ -49,27 +51,119 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
-        Task task = taskList.get(position);
-        Context context = holder.itemView.getContext();
+        final Task task = taskList.get(position);
+        final Context context = holder.itemView.getContext();
 
+        // Ustawienie tytulu
         holder.title.setText(task.getTitle());
-        bindPriority(holder, task, context);
-        bindDate(holder, task);
-        bindStatus(holder, task, context);
 
-        // --- Obsluga klikniec ---
+        // --- Obsługa priorytetu (kolorowe etykiety) ---
+        if (task.getPriority() == 0 || task.getStatus() != 0) {
+            holder.priority.setVisibility(View.GONE);
+        } else {
+            holder.priority.setVisibility(View.VISIBLE);
+            int colorRes = 0;
+            String label = "";
 
-        holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onTaskClick(task);
+            if (task.getPriority() == 1) {
+                colorRes = R.color.priority_low;
+                label = "Niski";
+            } else if (task.getPriority() == 2) {
+                colorRes = R.color.priority_medium;
+                label = "Średni";
+            } else if (task.getPriority() == 3) {
+                colorRes = R.color.priority_high;
+                label = "Wysoki";
+            }
+
+            if (colorRes != 0) {
+                holder.priority.setText(label);
+                holder.priority.setBackgroundResource(R.drawable.bg_priority_chip);
+                holder.priority.getBackground().mutate().setTint(ContextCompat.getColor(context, colorRes));
+            } else {
+                holder.priority.setVisibility(View.GONE);
+            }
+        }
+
+        // --- Obsługa daty (formatowanie relatywne) ---
+        if (task.getStatus() != 0) {
+            holder.date.setVisibility(View.GONE);
+        } else {
+            holder.date.setVisibility(View.VISIBLE);
+            
+            // Logika formatowania daty (Dzisiaj, Jutro lub dd.MM)
+            Calendar taskCal = Calendar.getInstance();
+            taskCal.setTimeInMillis(task.getDate());
+
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+
+            Calendar tomorrow = (Calendar) today.clone();
+            tomorrow.add(Calendar.DAY_OF_YEAR, 1);
+
+            String dateStr;
+            if (taskCal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                taskCal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
+                dateStr = "Dzisiaj";
+            } else if (taskCal.get(Calendar.YEAR) == tomorrow.get(Calendar.YEAR) &&
+                       taskCal.get(Calendar.DAY_OF_YEAR) == tomorrow.get(Calendar.DAY_OF_YEAR)) {
+                dateStr = "Jutro";
+            } else {
+                SimpleDateFormat sdf = new SimpleDateFormat("dd.MM", Locale.getDefault());
+                dateStr = sdf.format(new Date(task.getDate()));
+            }
+
+            // Dodanie godziny jeśli jest ustawiona
+            if (task.getTime() != 0) {
+                SimpleDateFormat tf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+                dateStr += " " + tf.format(new Date(task.getTime()));
+            }
+            holder.date.setText(dateStr);
+        }
+
+        // --- Obsługa wyglądu w zależności od statusu (przekreślenie) ---
+        if (task.getStatus() == 0) {
+            // Aktywne
+            holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
+            holder.title.setPaintFlags(holder.title.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            CompoundButtonCompat.setButtonTintList(holder.checkbox, ColorStateList.valueOf(ContextCompat.getColor(context, R.color.accent)));
+        } else {
+            // Zakończone lub Nieudane
+            holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_secondary));
+            holder.title.setPaintFlags(holder.title.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+
+            int statusColor;
+            if (task.getStatus() == 1) statusColor = R.color.status_done;
+            else statusColor = R.color.status_failed;
+            
+            CompoundButtonCompat.setButtonTintList(holder.checkbox, ColorStateList.valueOf(ContextCompat.getColor(context, statusColor)));
+        }
+
+        // --- Obsługa kliknięć ---
+
+        // Kliknięcie w całą kartę
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (listener != null) {
+                    listener.onTaskClick(task);
+                }
+            }
         });
 
-        // Wazne: usuwamy listener PRZED ustawieniem stanu checkboxa.
-        // Bez tego, przy przewijaniu listy RecyclerView "recykluje" widoki
-        // i wywolalby listener ze starymi danymi.
-        holder.checkbox.setOnCheckedChangeListener(null);
+        // Obsługa checkboxa (zmiana statusu)
+        holder.checkbox.setOnCheckedChangeListener(null); // Ważne: resetujemy listener przed zmianą stanu (recykling widoków)
         holder.checkbox.setChecked(task.getStatus() != 0);
-        holder.checkbox.setOnCheckedChangeListener((btn, isChecked) -> {
-            if (listener != null) listener.onCheckboxClick(task);
+        holder.checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (listener != null) {
+                    listener.onCheckboxClick(task);
+                }
+            }
         });
     }
 
@@ -78,128 +172,18 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         return taskList.size();
     }
 
-    // --- Metody publiczne dla fragmentu ---
-
+    // Metoda do odświeżania listy przez Fragment
     public void updateTasks(List<Task> tasks) {
         this.taskList = tasks;
         notifyDataSetChanged();
     }
 
+    // Pobieranie zadania z konkretnej pozycji
     public Task getTaskAt(int position) {
         return taskList.get(position);
     }
 
-    // ========== Metody stylowania ==========
-
-    private void bindPriority(TaskViewHolder holder, Task task, Context context) {
-        // Ukrywanie priorytetu dla ukonczonych zadan lub gdy brak priorytetu
-        if (task.getPriority() == 0 || task.getStatus() != 0) {
-            holder.priority.setVisibility(View.GONE);
-            return;
-        }
-        holder.priority.setVisibility(View.VISIBLE);
-
-        int colorRes;
-        String label;
-        switch (task.getPriority()) {
-            case 1:
-                colorRes = R.color.priority_low;
-                label = context.getString(R.string.priority_low);
-                break;
-            case 2:
-                colorRes = R.color.priority_medium;
-                label = context.getString(R.string.priority_medium);
-                break;
-            case 3:
-                colorRes = R.color.priority_high;
-                label = context.getString(R.string.priority_high);
-                break;
-            default:
-                holder.priority.setVisibility(View.GONE);
-                return;
-        }
-
-        holder.priority.setText(label);
-        holder.priority.setBackgroundResource(R.drawable.bg_priority_chip);
-        // mutate() tworzy kopie drawable, dzieki czemu zmiana koloru
-        // nie wplywa na inne karty ktore uzywa tego samego drawable
-        holder.priority.getBackground().mutate().setTint(
-                ContextCompat.getColor(context, colorRes));
-    }
-
-    private void bindDate(TaskViewHolder holder, Task task) {
-        if (task.getStatus() != 0) {
-            holder.date.setVisibility(View.GONE);
-            return;
-        }
-        holder.date.setVisibility(View.VISIBLE);
-        holder.date.setText(formatDate(task));
-    }
-
-    private void bindStatus(TaskViewHolder holder, Task task, Context context) {
-        if (task.getStatus() == 0) {
-            // Aktywne – normalny wyglad
-            holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
-            holder.title.setPaintFlags(
-                    holder.title.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-            CompoundButtonCompat.setButtonTintList(holder.checkbox,
-                    ColorStateList.valueOf(ContextCompat.getColor(context, R.color.accent)));
-        } else {
-            // Ukonczone/nieudane – przekreslony tekst, zmieniony kolor checkboxa
-            holder.title.setTextColor(ContextCompat.getColor(context, R.color.text_secondary));
-            holder.title.setPaintFlags(
-                    holder.title.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-
-            int statusColor = (task.getStatus() == 1)
-                    ? R.color.status_done     // zielony dla skonczonych
-                    : R.color.status_failed;  // czerwony dla nieudanych
-            CompoundButtonCompat.setButtonTintList(holder.checkbox,
-                    ColorStateList.valueOf(ContextCompat.getColor(context, statusColor)));
-        }
-    }
-
-    // ========== Formatowanie daty ==========
-
-    private String formatDate(Task task) {
-        Calendar taskCal = Calendar.getInstance();
-        taskCal.setTimeInMillis(task.getDate());
-
-        Calendar todayCal = Calendar.getInstance();
-        todayCal.set(Calendar.HOUR_OF_DAY, 0);
-        todayCal.set(Calendar.MINUTE, 0);
-        todayCal.set(Calendar.SECOND, 0);
-        todayCal.set(Calendar.MILLISECOND, 0);
-
-        Calendar tomorrowCal = (Calendar) todayCal.clone();
-        tomorrowCal.add(Calendar.DAY_OF_YEAR, 1);
-
-        // Wyswietlenie relatywnej daty lub formatu dd.MM
-        String dateStr;
-        if (isSameDay(taskCal, todayCal)) {
-            dateStr = "Dzisiaj";
-        } else if (isSameDay(taskCal, tomorrowCal)) {
-            dateStr = "Jutro";
-        } else {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM", Locale.getDefault());
-            dateStr = sdf.format(new Date(task.getDate()));
-        }
-
-        // Dodanie godziny jesli ustawiona
-        if (task.getTime() != 0) {
-            SimpleDateFormat tf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            dateStr += " " + tf.format(new Date(task.getTime()));
-        }
-
-        return dateStr;
-    }
-
-    private boolean isSameDay(Calendar c1, Calendar c2) {
-        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR)
-                && c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR);
-    }
-
-    // ========== ViewHolder ==========
-
+    // Klasa przechowująca widoki pojedynczego elementu
     static class TaskViewHolder extends RecyclerView.ViewHolder {
         CheckBox checkbox;
         TextView title, priority, date;
