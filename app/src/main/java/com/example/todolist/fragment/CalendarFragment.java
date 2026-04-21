@@ -46,12 +46,13 @@ public class CalendarFragment extends Fragment
     private TaskDao taskDao;
     private int currentYear, currentMonth;
 
-    // Zaznaczony dzien
+    // Zmienna przechowujaca pozycje zaznaczonego dnia w liscie
     private int selectedPosition = -1;
+    // Zmienna przechowujaca czas w milisekundach dla zaznaczonego dnia
     private long selectedDayTimestamp = 0;
 
     // ========================================================
-    //  CYKL ZYCIA
+    //  Główna metoda tworząca widok fragmentu
     // ========================================================
 
     @Nullable
@@ -59,29 +60,94 @@ public class CalendarFragment extends Fragment
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+        // Pompowanie layoutu fragmentu
         View view = inflater.inflate(R.layout.fragment_calendar, container, false);
 
+        // Inicjalizacja bazy danych
         taskDao = AppDatabase.getInstance(requireContext()).taskDao();
 
-        initViews(view);
-        setupCalendar();
-        setupTaskList();
-        setupNavigation(view);
+        // --- Inicjalizacja wszystkich widoków (findViewById) ---
+        // Tutaj przypisujemy komponenty z pliku XML do zmiennych w Javie
+        textMonthYear    = view.findViewById(R.id.text_month_year);
+        textSelectedDate = view.findViewById(R.id.text_selected_date);
+        textTaskCount    = view.findViewById(R.id.text_task_count);
+        recyclerCalendar = view.findViewById(R.id.recycler_calendar);
+        recyclerDayTasks = view.findViewById(R.id.recycler_day_tasks);
+        textEmptyDay     = view.findViewById(R.id.text_empty_day);
 
-        // Ustawienie biezacego miesiaca
+        // --- Konfiguracja głównego kalendarza (RecyclerView) ---
+        // Tworzymy adapter z pustą listą na start
+        calendarAdapter = new CalendarAdapter(new ArrayList<CalendarAdapter.CalendarDay>(), this);
+        // Kalendarz to siatka, więc używamy GridLayoutManager z 7 kolumnami (7 dni tygodnia)
+        recyclerCalendar.setLayoutManager(new GridLayoutManager(requireContext(), 7));
+        recyclerCalendar.setAdapter(calendarAdapter);
+
+        // --- Konfiguracja listy zadań dla wybranego dnia ---
+        taskAdapter = new TaskAdapter(new ArrayList<Task>(), this);
+        // Zadania wyświetlamy jedno pod drugim
+        recyclerDayTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerDayTasks.setAdapter(taskAdapter);
+
+        // --- Konfiguracja przycisków nawigacji (poprzedni/następny miesiąc) ---
+        ImageButton btnPrev = view.findViewById(R.id.btn_prev_month);
+        ImageButton btnNext = view.findViewById(R.id.btn_next_month);
+
+        // Akcja dla przycisku w lewo
+        btnPrev.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Zmniejszamy numer miesiąca
+                currentMonth--;
+                // Jeśli wyjdziemy poza styczeń (0), to wracamy do grudnia (11) poprzedniego roku
+                if (currentMonth < 0) {
+                    currentMonth = 11;
+                    currentYear--;
+                }
+                // Resetujemy zaznaczenie, bo w nowym miesiącu zaznaczymy coś innego
+                selectedPosition = -1;
+                selectedDayTimestamp = 0;
+                // Odświeżamy widok kalendarza
+                loadMonth();
+            }
+        });
+
+        // Akcja dla przycisku w prawo
+        btnNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Zwiększamy numer miesiąca
+                currentMonth++;
+                // Jeśli wyjdziemy poza grudzień (11), to przechodzimy do stycznia (0) następnego roku
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear++;
+                }
+                // Resetujemy zaznaczenie
+                selectedPosition = -1;
+                selectedDayTimestamp = 0;
+                // Odświeżamy widok kalendarza
+                loadMonth();
+            }
+        });
+
+        // --- Ustawienie początkowej daty (dzisiejszy dzień) ---
         Calendar today = Calendar.getInstance();
         currentYear = today.get(Calendar.YEAR);
         currentMonth = today.get(Calendar.MONTH);
-//        Log.d("DEBUG", String.valueOf(currentYear) + "-" + String.valueOf(currentMonth));
 
-        // FAB – otwiera edytor z wstepnie wypelniona data zaznaczonego dnia
+        // --- Konfiguracja przycisku plusa (FAB) ---
         FloatingActionButton fab = view.findViewById(R.id.fab_add_calendar);
-        fab.setOnClickListener(v -> {
-            Intent intent = new Intent(requireContext(), TaskEditorActivity.class);
-            if (selectedDayTimestamp != 0) {
-                intent.putExtra("prefill_date", selectedDayTimestamp);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Tworzymy intencję, żeby otworzyć okno dodawania zadania
+                Intent intent = new Intent(requireContext(), TaskEditorActivity.class);
+                // Jeśli mamy zaznaczony jakiś dzień w kalendarzu, przekazujemy jego datę
+                if (selectedDayTimestamp != 0) {
+                    intent.putExtra("prefill_date", selectedDayTimestamp);
+                }
+                startActivity(intent);
             }
-            startActivity(intent);
         });
 
         return view;
@@ -90,154 +156,119 @@ public class CalendarFragment extends Fragment
     @Override
     public void onResume() {
         super.onResume();
-        // Odswieza kalendarz przy kazdym powrocie (np. po edycji zadania)
+        // Odświeżamy kalendarz za każdym razem, gdy użytkownik wraca do tego ekranu
         loadMonth();
     }
 
     // ========================================================
-    //  INICJALIZACJA
-    // ========================================================
-
-    private void initViews(View view) {
-        textMonthYear    = view.findViewById(R.id.text_month_year);
-        textSelectedDate = view.findViewById(R.id.text_selected_date);
-        textTaskCount    = view.findViewById(R.id.text_task_count);
-        recyclerCalendar = view.findViewById(R.id.recycler_calendar);
-        recyclerDayTasks = view.findViewById(R.id.recycler_day_tasks);
-        textEmptyDay     = view.findViewById(R.id.text_empty_day);
-    }
-
-    private void setupCalendar() {
-        calendarAdapter = new CalendarAdapter(new ArrayList<>(), this);
-        // GridLayoutManager z 7 kolumnami – jeden na kazdy dzien tygodnia
-        recyclerCalendar.setLayoutManager(new GridLayoutManager(requireContext(), 7));
-        recyclerCalendar.setAdapter(calendarAdapter);
-    }
-
-    private void setupTaskList() {
-        taskAdapter = new TaskAdapter(new ArrayList<>(), this);
-        recyclerDayTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerDayTasks.setAdapter(taskAdapter);
-    }
-
-    private void setupNavigation(View view) {
-        ImageButton btnPrev = view.findViewById(R.id.btn_prev_month);
-        ImageButton btnNext = view.findViewById(R.id.btn_next_month);
-
-        btnPrev.setOnClickListener(v -> {
-            currentMonth--;
-            if (currentMonth < 0) {
-                currentMonth = 11;
-                currentYear--;
-            }
-            // Reset zaznaczonego dnia – nowy miesiac, autoSelectDay wybierze dzien
-            selectedPosition = -1;
-            selectedDayTimestamp = 0;
-            loadMonth();
-        });
-
-        btnNext.setOnClickListener(v -> {
-            currentMonth++;
-            if (currentMonth > 11) {
-                currentMonth = 0;
-                currentYear++;
-            }
-            // Reset zaznaczonego dnia – nowy miesiac, autoSelectDay wybierze dzien
-            selectedPosition = -1;
-            selectedDayTimestamp = 0;
-            loadMonth();
-        });
-    }
-
-    // ========================================================
-    //  LADOWANIE MIESIACA
+    //  Metoda odpowiedzialna za ładowanie danych dla danego miesiąca
     // ========================================================
 
     private void loadMonth() {
-        // --- Naglowek miesiaca (np. "Wrzesień 2026") ---
+        // --- Ustawianie napisu z nazwą miesiąca i rokiem ---
         Calendar cal = Calendar.getInstance();
         cal.set(currentYear, currentMonth, 1);
         SimpleDateFormat sdf = new SimpleDateFormat("LLLL yyyy", Locale.getDefault());
         String monthName = sdf.format(cal.getTime());
+        // Robimy pierwszą literę wielką (np. "wrzesień" -> "Wrzesień")
         textMonthYear.setText(monthName.substring(0, 1).toUpperCase() + monthName.substring(1));
-//        Log.d("DEBUG", monthName);
 
-        // --- Generowanie komorek kalendarza ---
+        // --- Generowanie listy dni do wyświetlenia w siatce ---
         List<CalendarAdapter.CalendarDay> days = generateDays();
 
-        // --- Pobranie liczby zadan dla widocznego zakresu dat ---
+        // --- Pobieranie zadań z bazy i liczenie ich dla każdego dnia ---
         if (!days.isEmpty()) {
+            // Początek zakresu to timestamp pierwszego elementu w liście (może być z poprz. miesiąca)
             long rangeStart = days.get(0).timestamp;
+            // Koniec to ostatni dzień + 24 godziny (milisekundy), żeby złapać cały dzień
             long rangeEnd = days.get(days.size() - 1).timestamp + 86400000L;
             List<Task> monthTasks = taskDao.getByDateRange(rangeStart, rangeEnd);
+            
+            // Mapowanie zadań - tutaj liczymy ile zadań jest w każdym dniu
             mapTaskCountsToDays(days, monthTasks);
         }
 
-        // --- Zaznaczenie dnia ---
+        // --- Logika zaznaczania odpowiedniego dnia ---
         if (selectedDayTimestamp != 0) {
-            // Proba ponownego zaznaczenia tego samego dnia (po powrocie z edytora)
-            boolean reselected = false; // TODO blad ponownego ustawiania
+            // Jeśli już coś było zaznaczone, szukamy tego dnia w nowej liście
+            boolean found = false;
             for (int i = 0; i < days.size(); i++) {
                 CalendarAdapter.CalendarDay day = days.get(i);
                 if (day.isCurrentMonth && day.timestamp == selectedDayTimestamp) {
                     day.isSelected = true;
                     selectedPosition = i;
-//                    reselected = true;
+                    found = true;
                     break;
                 }
             }
-            if (!reselected) {
+            // Jeśli nie znaleźliśmy (bo np. zmieniliśmy miesiąc), wybieramy domyślny dzień
+            if (!found) {
                 selectedDayTimestamp = 0;
                 autoSelectDay(days);
             }
         } else {
+            // Jeśli nic nie było zaznaczone, wybieramy automatycznie
             autoSelectDay(days);
         }
 
+        // Przekazujemy gotową listę dni do adaptera
         calendarAdapter.updateDays(days);
 
-        // --- Zaladowanie zadan dla zaznaczonego dnia ---
+        // Jeśli mamy wybrany dzień, ładujemy dla niego zadania na dole ekranu
         if (selectedDayTimestamp != 0) {
             loadTasksForDay(selectedDayTimestamp);
         }
     }
 
     // ========================================================
-    //  GENEROWANIE DNI MIESIACA
+    //  Matematyka generowania dni w kalendarzu
     // ========================================================
 
     private List<CalendarAdapter.CalendarDay> generateDays() {
-        List<CalendarAdapter.CalendarDay> days = new ArrayList<>();
+        List<CalendarAdapter.CalendarDay> days = new ArrayList<CalendarAdapter.CalendarDay>();
 
+        // Ustawiamy kalendarz na pierwszy dzień wybranego miesiąca
         Calendar cal = Calendar.getInstance();
         cal.set(currentYear, currentMonth, 1, 0, 0, 0);
         cal.set(Calendar.MILLISECOND, 0);
 
+        // Sprawdzamy ile dni ma ten miesiąc (np. 30, 31 lub 28/29)
         int daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
 
-        // Pierwszy dzien miesiaca wzgledem dnia tygodnia
+        // --- OBLICZANIE OFFSETU (przesunięcia) ---
+        // Sprawdzamy którym dniem tygodnia jest pierwszy dzień miesiąca
         int firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+        // W Androidzie niedziela to 1, poniedziałek to 2. My chcemy, żeby poniedziałek był pierwszy.
+        // Ta formuła wylicza ile "pustych" komórek (z poprzedniego miesiąca) musimy dodać na początku.
         int offset = (firstDayOfWeek - Calendar.MONDAY + 7) % 7;
 
-        // Uzupelnienie do pelnych wierszy (kazdy po 7 komorek)
+        // --- OBLICZANIE LICZBY WSZYSTKICH KOMÓREK ---
+        // Kalendarz zawsze wyświetla pełne tygodnie (wiersze po 7 dni)
         int totalCells = offset + daysInMonth;
+        // Obliczamy ile pełnych rzędów potrzebujemy
         int rows = (int) Math.ceil(totalCells / 7.0);
+        // Ostateczna liczba komórek to wielokrotność 7
         totalCells = rows * 7;
 
-        // Cofnij kalendarz o offset dni (na ostatnie dni poprzedniego miesiaca)
+        // Robimy kopię kalendarza i cofamy go o wyliczony offset, żeby zacząć od poprz. miesiąca
         Calendar dayCal = (Calendar) cal.clone();
         dayCal.add(Calendar.DAY_OF_MONTH, -offset);
 
+        // Dzisiejsza data do porównania
         Calendar today = Calendar.getInstance();
 
+        // Pętla tworząca obiekty dla każdej komórki w siatce
         for (int i = 0; i < totalCells; i++) {
             CalendarAdapter.CalendarDay day = new CalendarAdapter.CalendarDay();
             day.dayOfMonth = dayCal.get(Calendar.DAY_OF_MONTH);
             day.timestamp = dayCal.getTimeInMillis();
+            // Sprawdzamy czy ten dzień należy do aktualnie przeglądanego miesiąca
             day.isCurrentMonth = (dayCal.get(Calendar.MONTH) == currentMonth
                     && dayCal.get(Calendar.YEAR) == currentYear);
+            // Sprawdzamy czy to dzisiaj
             day.isToday = isSameDay(dayCal, today);
 
+            // Dodajemy dzień do listy i przesuwamy kalendarz o jeden dzień do przodu
             days.add(day);
             dayCal.add(Calendar.DAY_OF_MONTH, 1);
         }
@@ -246,49 +277,64 @@ public class CalendarFragment extends Fragment
     }
 
     // ========================================================
-    //  MAPOWANIE ZADAN NA DNI
+    //  Liczenie zadań dla każdego dnia
     // ========================================================
 
-    /**
-     * Liczy ile zadan przypada na kazdy dzien widoczny w kalendarzu.
-     * Wynik zapisuje w polu taskCount kazdego CalendarDay.
-     */
     private void mapTaskCountsToDays(List<CalendarAdapter.CalendarDay> days,
                                      List<Task> tasks) {
-        // Klucz: data w formacie "yyyy-MM-dd", wartosc: liczba zadan
-        Map<String, Integer> countMap = new HashMap<>();
+        // Mapa: klucz to data jako tekst "yyyy-MM-dd", wartość to liczba zadań
+        Map<String, Integer> countMap = new HashMap<String, Integer>();
         SimpleDateFormat keyFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
-        for (Task task : tasks) {
+        // Przechodzimy przez wszystkie zadania i zliczamy je dla konkretnych dat
+        for (int i = 0; i < tasks.size(); i++) {
+            Task task = tasks.get(i);
             String key = keyFormat.format(new Date(task.getDate()));
-            countMap.merge(key, 1, Integer::sum);
+            
+            // Sprawdzamy czy mamy już taki klucz w mapie
+            if (countMap.containsKey(key)) {
+                // Jeśli tak, to pobieramy aktualną liczbę i dodajemy 1
+                int currentCount = countMap.get(key);
+                countMap.put(key, currentCount + 1);
+            } else {
+                // Jeśli nie, to wpisujemy 1 (pierwsze zadanie dla tej daty)
+                countMap.put(key, 1);
+            }
         }
 
-        for (CalendarAdapter.CalendarDay day : days) {
+        // Teraz przypisujemy policzone wartości do obiektów dni w kalendarzu
+        for (int j = 0; j < days.size(); j++) {
+            CalendarAdapter.CalendarDay day = days.get(j);
             String key = keyFormat.format(new Date(day.timestamp));
+            
             Integer count = countMap.get(key);
-            day.taskCount = (count != null) ? count : 0;
+            if (count != null) {
+                day.taskCount = count;
+            } else {
+                day.taskCount = 0;
+            }
         }
     }
 
     // ========================================================
-    //  ZAZNACZANIE DNIA
+    //  Wybieranie domyślnego dnia przy wejściu w miesiąc
     // ========================================================
 
-    /**
-     * Automatycznie zaznacza dzien:
-     * - dzisiejszy, jesli kalendarz pokazuje biezacy miesiac
-     * - pierwszy dzien miesiaca w przeciwnym wypadku
-     */
     private void autoSelectDay(List<CalendarAdapter.CalendarDay> days) {
         Calendar today = Calendar.getInstance();
+        // Sprawdzamy czy jesteśmy w aktualnym miesiącu i roku
         boolean isTodayMonth = (currentYear == today.get(Calendar.YEAR)
                 && currentMonth == today.get(Calendar.MONTH));
 
-        int targetDay = isTodayMonth ? today.get(Calendar.DAY_OF_MONTH) : 1;
+        // Jeśli tak, zaznaczamy dzisiejszy numer dnia, jeśli nie - pierwszy dzień miesiąca
+        int targetDay = 1;
+        if (isTodayMonth) {
+            targetDay = today.get(Calendar.DAY_OF_MONTH);
+        }
 
         for (int i = 0; i < days.size(); i++) {
             CalendarAdapter.CalendarDay day = days.get(i);
+            // Zaznaczamy tylko jeśli dzień należy do głównego miesiąca
             if (day.isCurrentMonth && day.dayOfMonth == targetDay) {
                 day.isSelected = true;
                 selectedPosition = i;
@@ -298,47 +344,56 @@ public class CalendarFragment extends Fragment
         }
     }
 
+    // Metoda wywoływana, gdy użytkownik kliknie w dzień na kalendarzu
     @Override
     public void onDayClick(int position, CalendarAdapter.CalendarDay day) {
         int oldPosition = selectedPosition;
         selectedPosition = position;
         selectedDayTimestamp = day.timestamp;
 
-        // Aktualizacja zaznaczenia (tylko dwie komorki, nie cala siatka)
+        // Informujemy adapter, że zmieniło się zaznaczenie, aby odświeżył widok
         calendarAdapter.setSelectedPosition(oldPosition, position);
+        // Ładujemy zadania dla nowo wybranego dnia
         loadTasksForDay(day.timestamp);
     }
 
     // ========================================================
-    //  LISTA ZADAN WYBRANEGO DNIA
+    //  Ładowanie listy zadań pod kalendarzem
     // ========================================================
 
     private void loadTasksForDay(long dayStart) {
-        long dayEnd = dayStart + 86400000L; // +24 godziny
+        // Zakres 24h: od północy do północy następnego dnia
+        long dayEnd = dayStart + 86400000L;
         List<Task> tasks = taskDao.getByDateRange(dayStart, dayEnd);
 
-        // Naglowek: data w formacie "20 września, piątek"
+        // Formatowanie nagłówka z datą, np. "10 stycznia, niedziela"
         SimpleDateFormat sdf = new SimpleDateFormat("d MMMM, EEEE", Locale.getDefault());
         textSelectedDate.setText(sdf.format(new Date(dayStart)));
 
-        // Licznik z poprawna odmiana ("1 Zadanie", "3 Zadania", "5 Zadań")
+        // Ustawienie tekstu z liczbą zadań (używamy plurals dla poprawnej polskiej odmiany)
         textTaskCount.setText(
                 getResources().getQuantityString(R.plurals.task_count, tasks.size(), tasks.size()));
 
+        // Aktualizacja listy zadań w adapterze
         taskAdapter.updateTasks(tasks);
 
-        // Przelaczenie miedzy lista a komunikatem pustego stanu
-        boolean empty = tasks.isEmpty();
-        recyclerDayTasks.setVisibility(empty ? View.GONE : View.VISIBLE);
-        textEmptyDay.setVisibility(empty ? View.VISIBLE : View.GONE);
+        // Jeśli nie ma zadań, pokazujemy napis "brak zadań", w przeciwnym razie pokazujemy listę
+        if (tasks.isEmpty()) {
+            recyclerDayTasks.setVisibility(View.GONE);
+            textEmptyDay.setVisibility(View.VISIBLE);
+        } else {
+            recyclerDayTasks.setVisibility(View.VISIBLE);
+            textEmptyDay.setVisibility(View.GONE);
+        }
     }
 
     // ========================================================
-    //  CALLBACKI TASK ADAPTERA
+    //  Akcje na zadaniach (kliknięcie lub zmiana statusu)
     // ========================================================
 
     @Override
     public void onTaskClick(Task task) {
+        // Otwarcie edytora dla istniejącego zadania
         Intent intent = new Intent(requireContext(), TaskEditorActivity.class);
         intent.putExtra("task_id", task.getId());
         startActivity(intent);
@@ -346,21 +401,22 @@ public class CalendarFragment extends Fragment
 
     @Override
     public void onCheckboxClick(Task task) {
+        // Prosta zmiana statusu: 0 -> 1, 1 -> 0
         if (task.getStatus() == 0) {
             task.setStatus(1);
         } else {
             task.setStatus(0);
         }
+        // Zapisanie zmiany w bazie danych
         taskDao.update(task);
+        // Odświeżenie wszystkiego, żeby kropki na kalendarzu też się zgadzały
         loadMonth();
     }
 
-    // ========================================================
-    //  POMOC
-    // ========================================================
-
+    // Funkcja pomocnicza sprawdzająca czy dwie daty to ten sam dzień
     private boolean isSameDay(Calendar c1, Calendar c2) {
-        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR)
-                && c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR);
+        boolean sameYear = c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR);
+        boolean sameDayOfYear = c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR);
+        return sameYear && sameDayOfYear;
     }
 }
