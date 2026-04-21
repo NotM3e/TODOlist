@@ -1,14 +1,16 @@
 package com.example.todolist;
 
 import android.os.Bundle;
-import android.util.Log;
+import android.view.MenuItem;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
 import com.example.todolist.fragment.CalendarFragment;
 import com.example.todolist.fragment.TaskListFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationBarView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,35 +21,37 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
 
-        // Domyslnie pokazuje liste zadan
+        // Domyślnie przy starcie aplikacji pokazujemy listę zadań
         if (savedInstanceState == null) {
-            loadFragment(new TaskListFragment());
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragment_container, new TaskListFragment())
+                    .commit();
         }
 
-        // Obsluga przelaczania zakladek dolnej nawigacji
-        bottomNav.setOnItemSelectedListener(item -> {
-            Fragment fragment = null;
-            int itemId = item.getItemId();
+        // --- Obsługa dolnej nawigacji ---
+        bottomNav.setOnItemSelectedListener(new NavigationBarView.OnItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                Fragment fragment = null;
+                int itemId = item.getItemId();
 
-            if (itemId == R.id.nav_tasks) {
-                fragment = new TaskListFragment();
-            } else if (itemId == R.id.nav_calendar) {
-                fragment = new CalendarFragment();
-            }
+                if (itemId == R.id.nav_tasks) {
+                    fragment = new TaskListFragment();
+                } else if (itemId == R.id.nav_calendar) {
+                    fragment = new CalendarFragment();
+                }
 
-            if (fragment != null) {
-                loadFragment(fragment);
+                if (fragment != null) {
+                    getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.fragment_container, fragment)
+                            .commit();
+                }
+                
+                return true;
             }
-            return true;
         });
         Log.d("DEBUG", String.valueOf(System.currentTimeMillis()));
-    }
-
-    // Podmienia fragment w kontenerze
-    private void loadFragment(Fragment fragment) {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .commit();
     }
 }

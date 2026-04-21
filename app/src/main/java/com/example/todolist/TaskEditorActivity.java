@@ -2,14 +2,16 @@ package com.example.todolist;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.DialogInterface;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.DatePicker;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.TimePicker;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
@@ -30,7 +32,7 @@ import java.util.Locale;
 
 public class TaskEditorActivity extends AppCompatActivity {
 
-    // ========== Widoki ==========
+    // Widoki:
     private EditText inputTitle, inputDescription;
     private TextView textDate, textTime;
     private MaterialButtonToggleGroup togglePriority, toggleStatus;
@@ -40,21 +42,17 @@ public class TaskEditorActivity extends AppCompatActivity {
     private View sectionStatus;
     private ImageButton btnDelete;
 
-    // ========== Dane ==========
+    // Dane:
     private TaskDao taskDao;
     private DraftManager draftManager;
     private Task currentTask;       // null w trybie tworzenia
     private boolean isEditMode;
 
-    // Aktualnie wybrane wartosci
+    // Wybrane wartości:
     private long selectedDate = 0;
     private long selectedTime = 0;
     private int selectedPriority = 0;
     private int selectedStatus = 0;
-
-    // ========================================================
-    //  INICJALIZACJA
-    // ========================================================
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,39 +62,23 @@ public class TaskEditorActivity extends AppCompatActivity {
         taskDao = AppDatabase.getInstance(this).taskDao();
         draftManager = new DraftManager(this);
 
-        initViews();
-        determineMode();
-        setupListeners();
-        setupBackNavigation();
-
-        if (isEditMode) {
-            loadTask();
-        } else {
-            checkDraft();
-        }
-
-        updateConfirmButton();
-    }
-
-    private void initViews() {
-        inputTitle       = findViewById(R.id.input_title);
+        inputTitle = findViewById(R.id.input_title);
         inputDescription = findViewById(R.id.input_description);
-        textDate         = findViewById(R.id.text_date);
-        textTime         = findViewById(R.id.text_time);
-        togglePriority   = findViewById(R.id.toggle_priority);
-        toggleStatus     = findViewById(R.id.toggle_status);
-        btnPriorityLow   = findViewById(R.id.btn_priority_low);
-        btnPriorityMed   = findViewById(R.id.btn_priority_medium);
-        btnPriorityHigh  = findViewById(R.id.btn_priority_high);
-        btnStatusTodo    = findViewById(R.id.btn_status_todo);
-        btnStatusFailed  = findViewById(R.id.btn_status_failed);
-        btnStatusDone    = findViewById(R.id.btn_status_done);
-        btnConfirm       = findViewById(R.id.btn_confirm);
-        sectionStatus    = findViewById(R.id.section_status);
-        btnDelete        = findViewById(R.id.btn_delete);
-    }
+        textDate = findViewById(R.id.text_date);
+        textTime = findViewById(R.id.text_time);
+        togglePriority = findViewById(R.id.toggle_priority);
+        toggleStatus = findViewById(R.id.toggle_status);
+        btnPriorityLow = findViewById(R.id.btn_priority_low);
+        btnPriorityMed = findViewById(R.id.btn_priority_medium);
+        btnPriorityHigh = findViewById(R.id.btn_priority_high);
+        btnStatusTodo = findViewById(R.id.btn_status_todo);
+        btnStatusFailed = findViewById(R.id.btn_status_failed);
+        btnStatusDone = findViewById(R.id.btn_status_done);
+        btnConfirm = findViewById(R.id.btn_confirm);
+        sectionStatus = findViewById(R.id.section_status);
+        badgeSaved = findViewById(R.id.badge_saved);
 
-    private void determineMode() {
+        // Sprawdzanie trybu
         int taskId = getIntent().getIntExtra("task_id", -1);
         isEditMode = (taskId != -1);
 
@@ -105,20 +87,126 @@ public class TaskEditorActivity extends AppCompatActivity {
             sectionStatus.setVisibility(View.VISIBLE);
             btnDelete.setVisibility(View.VISIBLE);
             btnConfirm.setText(R.string.btn_save);
+            
+            // Ładowanie danych istniejących
+            loadTask();
         } else {
-            // Wstepne wypelnienie daty (z widoku kalendarza)
-            long prefillDate = getIntent().getLongExtra("prefill_date", 0);
-            if (prefillDate != 0) {
-                selectedDate = prefillDate;
-                updateDateDisplay();
+            // Sprawdzanie czy jest zapisany szkic
+            if (draftManager.hasDraft()) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(R.string.draft_dialog_title);
+                builder.setMessage(R.string.draft_dialog_message);
+                builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        loadDraft();
+                    }
+                });
+                builder.setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        draftManager.clearDraft();
+                    }
+                });
+                builder.setCancelable(false);
+                builder.show();
             }
         }
+
+        findViewById(R.id.card_date).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDatePicker();
+            }
+        });
+
+        View cardTime = findViewById(R.id.card_time);
+        cardTime.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showTimePicker();
+            }
+        });
+        
+        // Długie przytrzymanie godziny powoduje jej wyczyszczenie
+        cardTime.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                selectedTime = 0;
+                updateTimeDisplay();
+                return true;
+            }
+        });
+
+        togglePriority.addOnButtonCheckedListener(new MaterialButtonToggleGroup.OnButtonCheckedListener() {
+            @Override
+            public void onButtonChecked(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
+                int selected = group.getCheckedButtonId();
+                if (selected == R.id.btn_priority_low)         selectedPriority = 1;
+                else if (selected == R.id.btn_priority_medium)  selectedPriority = 2;
+                else if (selected == R.id.btn_priority_high)    selectedPriority = 3;
+                else                                            selectedPriority = 0;
+                updatePriorityColors();
+            }
+        });
+
+        // Wybór statusu - tylko w edycji
+        toggleStatus.addOnButtonCheckedListener(new MaterialButtonToggleGroup.OnButtonCheckedListener() {
+            @Override
+            public void onButtonChecked(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
+                int selected = group.getCheckedButtonId();
+                if (selected == R.id.btn_status_todo)        selectedStatus = 0;
+                else if (selected == R.id.btn_status_done)   selectedStatus = 1;
+                else if (selected == R.id.btn_status_failed) selectedStatus = 2;
+                updateStatusColors();
+            }
+        });
+
+        // Sprawdzanie czy tytuł nie jest pusty
+        inputTitle.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateConfirmButton();
+            }
+        });
+
+        btnConfirm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                saveTask();
+            }
+        });
+
+        findViewById(R.id.btn_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                handleExit();
+            }
+        });
+
+        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                handleExit();
+            }
+        });
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleExit();
+            }
+        });
+
+        // Na końcu ustawiamy stan przycisku zapisu
+        updateConfirmButton();
     }
 
-    // ========================================================
-    //  LADOWANIE DANYCH
-    // ========================================================
-
+    // Ustawienie danych z bazy danych do widoków
     private void loadTask() {
         inputTitle.setText(currentTask.getTitle());
         inputDescription.setText(currentTask.getDescription());
@@ -133,22 +221,7 @@ public class TaskEditorActivity extends AppCompatActivity {
         setStatusChecked();
     }
 
-    // ========================================================
-    //  DRAFT – szkic nowego zadania
-    // ========================================================
-
-    private void checkDraft() {
-        if (!draftManager.hasDraft()) return;
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.draft_dialog_title)
-                .setMessage(R.string.draft_dialog_message)
-                .setPositiveButton(R.string.yes, (d, w) -> loadDraft())
-                .setNegativeButton(R.string.no, (d, w) -> draftManager.clearDraft())
-                .setCancelable(false)
-                .show();
-    }
-
+    // Ustawienie danych z szkica do edytora
     private void loadDraft() {
         inputTitle.setText(draftManager.getTitle());
         inputDescription.setText(draftManager.getDescription());
@@ -162,21 +235,20 @@ public class TaskEditorActivity extends AppCompatActivity {
         updateConfirmButton();
     }
 
-    /**
-     * Zapisuje szkic tylko w trybie tworzenia i tylko gdy
-     * uzytkownik wpisal jakiekolwiek dane.
-     */
-    private void saveDraftIfNeeded() {
-        if (isEditMode) return;
-        if (!hasAnyContent()) return;
-
-        draftManager.saveDraft(
-                inputTitle.getText().toString().trim(),
-                inputDescription.getText().toString().trim(),
-                selectedDate, selectedTime, selectedPriority
-        );
+    // Funkcja wywoływana przy wychodzeniu z edytora
+    private void handleExit() {
+        // Zapisz szkic tylko jeśli to nowe zadanie i coś wpisano
+        if (!isEditMode && hasAnyContent()) {
+            draftManager.saveDraft(
+                    inputTitle.getText().toString().trim(),
+                    inputDescription.getText().toString().trim(),
+                    selectedDate, selectedTime, selectedPriority
+            );
+        }
+        finish();
     }
 
+    // Sprawdza czy użytkownik wpisał cokolwiek w formularzu
     private boolean hasAnyContent() {
         return !inputTitle.getText().toString().trim().isEmpty()
                 || !inputDescription.getText().toString().trim().isEmpty()
@@ -185,138 +257,48 @@ public class TaskEditorActivity extends AppCompatActivity {
                 || selectedPriority != 0;
     }
 
-    // ========================================================
-    //  LISTENERY
-    // ========================================================
-
-    private void setupListeners() {
-
-        // --- Karta daty – otwiera DatePickerDialog ---
-        findViewById(R.id.card_date).setOnClickListener(v -> showDatePicker());
-
-        // --- Karta godziny – klikniecie otwiera picker,
-        //     dlugie przytrzymanie czysci godzine ---
-        View cardTime = findViewById(R.id.card_time);
-        cardTime.setOnClickListener(v -> showTimePicker());
-        cardTime.setOnLongClickListener(v -> {
-            selectedTime = 0;
-            updateTimeDisplay();
-            return true;
-        });
-
-        // --- Priorytet ---
-        togglePriority.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            int selected = group.getCheckedButtonId();
-            if (selected == R.id.btn_priority_low)         selectedPriority = 1;
-            else if (selected == R.id.btn_priority_medium)  selectedPriority = 2;
-            else if (selected == R.id.btn_priority_high)    selectedPriority = 3;
-            else                                            selectedPriority = 0;
-            updatePriorityColors();
-        });
-
-        // --- Status (tylko tryb edycji) ---
-        toggleStatus.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            int selected = group.getCheckedButtonId();
-            if (selected == R.id.btn_status_todo)        selectedStatus = 0;
-            else if (selected == R.id.btn_status_done)   selectedStatus = 1;
-            else if (selected == R.id.btn_status_failed) selectedStatus = 2;
-            updateStatusColors();
-        });
-
-        // --- Walidacja tytulu w czasie rzeczywistym ---
-        inputTitle.addTextChangedListener(new TextWatcher() {
-            public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
-            public void onTextChanged(CharSequence s, int a, int b, int c) {}
-            public void afterTextChanged(Editable s) { updateConfirmButton(); }
-        });
-
-        // --- Przyciski akcji ---
-        btnConfirm.setOnClickListener(v -> saveTask());
-        btnDelete.setOnClickListener(v -> showDeleteDialog());
-        findViewById(R.id.btn_cancel).setOnClickListener(v -> handleExit());
-        findViewById(R.id.btn_back).setOnClickListener(v -> handleExit());
-    }
-
-    /**
-     * Obsluga systemowego przycisku "wstecz" (gest lub przycisk na dole telefonu).
-     * OnBackPressedCallback to nowszy sposob obslugujacy wszystkie wersje Androida.
-     */
-    private void setupBackNavigation() {
-        getOnBackPressedDispatcher().addCallback(this,
-                new OnBackPressedCallback(true) {
-                    @Override
-                    public void handleOnBackPressed() {
-                        handleExit();
-                    }
-                });
-    }
-
-    private void handleExit() {
-        saveDraftIfNeeded();
-        finish();
-    }
-
-    // ========================================================
-    //  DIALOGI WYBORU DATY I GODZINY
-    // ========================================================
-
+    // Wyświetla okno wyboru daty
     private void showDatePicker() {
         Calendar cal = Calendar.getInstance();
         if (selectedDate != 0) cal.setTimeInMillis(selectedDate);
 
-        new DatePickerDialog(this, (view, year, month, day) -> {
-            Calendar selected = Calendar.getInstance();
-            selected.set(year, month, day, 0, 0, 0);
-            selected.set(Calendar.MILLISECOND, 0);
-            selectedDate = selected.getTimeInMillis();
-            updateDateDisplay();
-            updateConfirmButton();
-        },
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH),
-                cal.get(Calendar.DAY_OF_MONTH)
-        ).show();
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this, new DatePickerDialog.OnDateSetListener() {
+            @Override
+            public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                Calendar selected = Calendar.getInstance();
+                selected.set(year, month, dayOfMonth, 0, 0, 0);
+                selected.set(Calendar.MILLISECOND, 0);
+                selectedDate = selected.getTimeInMillis();
+                updateDateDisplay();
+                updateConfirmButton();
+            }
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+        
+        datePickerDialog.show();
     }
 
+    // Wyświetla okno wyboru godziny
     private void showTimePicker() {
         Calendar cal = Calendar.getInstance();
         if (selectedTime != 0) cal.setTimeInMillis(selectedTime);
 
-        new TimePickerDialog(this, (view, hour, minute) -> {
-            Calendar selected = Calendar.getInstance();
-            selected.set(Calendar.HOUR_OF_DAY, hour);
-            selected.set(Calendar.MINUTE, minute);
-            selected.set(Calendar.SECOND, 0);
-            selected.set(Calendar.MILLISECOND, 0);
-            selectedTime = selected.getTimeInMillis();
-            updateTimeDisplay();
-        },
-                cal.get(Calendar.HOUR_OF_DAY),
-                cal.get(Calendar.MINUTE),
-                true   // format 24h
-        ).show();
+        TimePickerDialog timePickerDialog = new TimePickerDialog(this, new TimePickerDialog.OnTimeSetListener() {
+            @Override
+            public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                Calendar selected = Calendar.getInstance();
+                selected.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                selected.set(Calendar.MINUTE, minute);
+                selected.set(Calendar.SECOND, 0);
+                selected.set(Calendar.MILLISECOND, 0);
+                selectedTime = selected.getTimeInMillis();
+                updateTimeDisplay();
+            }
+        }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true);
+        
+        timePickerDialog.show();
     }
 
-    // ========================================================
-    //  ZAPIS ZADANIA
-    // ========================================================
-
-    /**
-     * Wyswietla dialog potwierdzenia usuniecia zadania.
-     * Dostepny tylko w trybie edycji.
-     */
-    private void showDeleteDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Usunięcie zadania")
-                .setMessage("Czy na pewno chcesz usunąć to zadanie? Tej operacji nie można cofnąć.")
-                .setPositiveButton("Usuń", (dialog, which) -> {
-                    taskDao.deleteById(currentTask.getId());
-                    finish();
-                })
-                .setNegativeButton(R.string.btn_cancel, null)
-                .show();
-    }
-
+    // Zapisuje zadanie do bazy danych
     private void saveTask() {
         String title = inputTitle.getText().toString().trim();
         String desc  = inputDescription.getText().toString().trim();
@@ -341,10 +323,7 @@ public class TaskEditorActivity extends AppCompatActivity {
         finish();
     }
 
-    // ========================================================
-    //  AKTUALIZACJA WYSWIETLANIA
-    // ========================================================
-
+    // Aktualizacja tekstu z datą na ekranie
     private void updateDateDisplay() {
         if (selectedDate == 0) {
             textDate.setText(R.string.select_date);
@@ -356,6 +335,7 @@ public class TaskEditorActivity extends AppCompatActivity {
         }
     }
 
+    // Aktualizacja tekstu z godziną na ekranie
     private void updateTimeDisplay() {
         if (selectedTime == 0) {
             textTime.setText(R.string.no_time);
@@ -367,41 +347,27 @@ public class TaskEditorActivity extends AppCompatActivity {
         }
     }
 
+    // Sprawdza czy przycisk zapisu powinien być aktywny
     private void updateConfirmButton() {
-        boolean valid = isFormValid();
+        boolean valid = !inputTitle.getText().toString().trim().isEmpty() && selectedDate != 0;
         btnConfirm.setEnabled(valid);
         btnConfirm.setAlpha(valid ? 1.0f : 0.5f);
     }
 
-    private boolean isFormValid() {
-        return !inputTitle.getText().toString().trim().isEmpty()
-                && selectedDate != 0;
-    }
-
-    // ========================================================
-    //  KOLORY PRZYCISKOW TOGGLE
-    // ========================================================
-
-    /**
-     * Programowo zaznacza przycisk priorytetu odpowiadajacy
-     * wartosci selectedPriority i aktualizuje kolory.
-     */
     private void setPriorityChecked() {
         togglePriority.clearChecked();
-        switch (selectedPriority) {
-            case 1: togglePriority.check(R.id.btn_priority_low);    break;
-            case 2: togglePriority.check(R.id.btn_priority_medium); break;
-            case 3: togglePriority.check(R.id.btn_priority_high);   break;
-        }
+        if (selectedPriority == 1) togglePriority.check(R.id.btn_priority_low);
+        else if (selectedPriority == 2) togglePriority.check(R.id.btn_priority_medium);
+        else if (selectedPriority == 3) togglePriority.check(R.id.btn_priority_high);
+        
         updatePriorityColors();
     }
 
     private void setStatusChecked() {
-        switch (selectedStatus) {
-            case 0: toggleStatus.check(R.id.btn_status_todo);   break;
-            case 1: toggleStatus.check(R.id.btn_status_done);   break;
-            case 2: toggleStatus.check(R.id.btn_status_failed); break;
-        }
+        if (selectedStatus == 0) toggleStatus.check(R.id.btn_status_todo);
+        else if (selectedStatus == 1) toggleStatus.check(R.id.btn_status_done);
+        else if (selectedStatus == 2) toggleStatus.check(R.id.btn_status_failed);
+        
         updateStatusColors();
     }
 
@@ -410,11 +376,9 @@ public class TaskEditorActivity extends AppCompatActivity {
         resetButton(btnPriorityMed);
         resetButton(btnPriorityHigh);
 
-        switch (selectedPriority) {
-            case 1: activateButton(btnPriorityLow,  R.color.priority_low);    break;
-            case 2: activateButton(btnPriorityMed,  R.color.priority_medium); break;
-            case 3: activateButton(btnPriorityHigh, R.color.priority_high);   break;
-        }
+        if (selectedPriority == 1) activateButton(btnPriorityLow,  R.color.priority_low);
+        else if (selectedPriority == 2) activateButton(btnPriorityMed,  R.color.priority_medium);
+        else if (selectedPriority == 3) activateButton(btnPriorityHigh, R.color.priority_high);
     }
 
     private void updateStatusColors() {
@@ -422,14 +386,10 @@ public class TaskEditorActivity extends AppCompatActivity {
         resetButton(btnStatusDone);
         resetButton(btnStatusFailed);
 
-        switch (selectedStatus) {
-            case 0: activateButton(btnStatusTodo,   R.color.accent);        break;
-            case 1: activateButton(btnStatusDone,   R.color.status_done);   break;
-            case 2: activateButton(btnStatusFailed, R.color.status_failed); break;
-        }
+        if (selectedStatus == 0) activateButton(btnStatusTodo,   R.color.accent);
+        else if (selectedStatus == 1) activateButton(btnStatusDone,   R.color.status_done);
+        else if (selectedStatus == 2) activateButton(btnStatusFailed, R.color.status_failed);
     }
-
-    // --- Pomocnicze metody do zmiany wygladu przyciskow ---
 
     private void activateButton(MaterialButton btn, int colorRes) {
         int color = ContextCompat.getColor(this, colorRes);
@@ -442,7 +402,6 @@ public class TaskEditorActivity extends AppCompatActivity {
         int bgColor = ContextCompat.getColor(this, R.color.background_card);
         btn.setBackgroundTintList(ColorStateList.valueOf(bgColor));
         btn.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-        btn.setStrokeColor(ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.text_hint)));
+        btn.setStrokeColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.text_hint)));
     }
 }

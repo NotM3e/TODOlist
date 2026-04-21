@@ -26,7 +26,6 @@ import com.example.todolist.model.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
 public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActionListener {
@@ -45,16 +44,77 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
 
         taskDao = AppDatabase.getInstance(requireContext()).taskDao();
 
-        initViews(view);
-        setupRecyclerViews();
-        setupSwipeGestures();
+        // Widoki:
+        recyclerActive = view.findViewById(R.id.recycler_active);
+        recyclerCompleted = view.findViewById(R.id.recycler_completed);
+        textActiveCount = view.findViewById(R.id.text_active_count);
+        textEmptyActive = view.findViewById(R.id.text_empty_active);
+        textCompletedHeader = view.findViewById(R.id.text_completed_header);
 
-        // FAB – otwiera edytor w trybie tworzenia
+        // Konfiguracja RecyclerView (Active):
+        activeAdapter = new TaskAdapter(new ArrayList<Task>(), this);
+        recyclerActive.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerActive.setAdapter(activeAdapter);
+
+        // Konfiguracja RecyclerView (Completed):
+        completedAdapter = new TaskAdapter(new ArrayList<Task>(), this);
+        recyclerCompleted.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerCompleted.setAdapter(completedAdapter);
+
+        // Przycisk FAB:
         FloatingActionButton fab = view.findViewById(R.id.fab_add);
-        fab.setOnClickListener(v -> {
-            Intent intent = new Intent(requireContext(), TaskEditorActivity.class);
-            startActivity(intent);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(requireContext(), TaskEditorActivity.class);
+                startActivity(intent);
+            }
         });
+
+        // Obsługa gestów swipe:
+        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                Task task = activeAdapter.getTaskAt(position);
+
+                if (direction == ItemTouchHelper.LEFT) {
+                    // Udane
+                    task.setStatus(1);
+                } else if (direction == ItemTouchHelper.RIGHT) {
+                    // Nieudane
+                    task.setStatus(2);
+                }
+
+                taskDao.update(task);
+                loadTasksFromDatabase();
+            }
+
+            @Override
+            public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+                View itemView = viewHolder.itemView;
+                Paint paint = new Paint();
+
+                if (dX < 0) {
+                    paint.setColor(ContextCompat.getColor(requireContext(), R.color.status_done));
+                    c.drawRect(itemView.getRight() + dX, itemView.getTop(), itemView.getRight(), itemView.getBottom(), paint);
+                } else if (dX > 0) {
+                    paint.setColor(ContextCompat.getColor(requireContext(), R.color.status_failed));
+                    c.drawRect(itemView.getLeft(), itemView.getTop(), itemView.getLeft() + dX, itemView.getBottom(), paint);
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+            }
+        };
+
+        // Podpięcie gestów do listy aktywnych zadań
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeCallback);
+        itemTouchHelper.attachToRecyclerView(recyclerActive);
 
         return view;
     }
@@ -62,120 +122,36 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
     @Override
     public void onResume() {
         super.onResume();
-        loadTasks();
+        // Odświeżenie listy zadań przy każdym powrocie do fragmentu
+        loadTasksFromDatabase();
     }
 
-    // ========== INICJALIZACJA ==========
-
-    private void initViews(View view) {
-        recyclerActive = view.findViewById(R.id.recycler_active);
-        recyclerCompleted = view.findViewById(R.id.recycler_completed);
-        textActiveCount = view.findViewById(R.id.text_active_count);
-        textEmptyActive = view.findViewById(R.id.text_empty_active);
-        textCompletedHeader = view.findViewById(R.id.text_completed_header);
-    }
-
-    private void setupRecyclerViews() {
-        activeAdapter = new TaskAdapter(new ArrayList<>(), this);
-        completedAdapter = new TaskAdapter(new ArrayList<>(), this);
-
-        recyclerActive.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerActive.setAdapter(activeAdapter);
-
-        recyclerCompleted.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerCompleted.setAdapter(completedAdapter);
-    }
-
-    // ========== LADOWANIE DANYCH ==========
-
-    private void loadTasks() {
+    // Pobieranie i wyświetlanie zadań z bazy danych:
+    private void loadTasksFromDatabase() {
         List<Task> activeTasks = taskDao.getAllActive();
 
-        // Ukonczone zadania nie starsze niz 7 dni
-        long cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000;
-        List<Task> completedTasks = taskDao.getCompletedSince(cutoff);
+        // Pobieranie ukończonych zadań z ostatnich 7 dni
+        long sevenDaysMillis = 7L * 24 * 60 * 60 * 1000;
+        long cutoffTime = System.currentTimeMillis() - sevenDaysMillis;
+        List<Task> completedTasks = taskDao.getCompletedSince(cutoffTime);
 
+        // Aktualizacja adapterów
         activeAdapter.updateTasks(activeTasks);
         completedAdapter.updateTasks(completedTasks);
 
-        // Aktualizacja naglowkow
+        // Aktualizacja tekstów liczników i nagłówków
         textActiveCount.setText(activeTasks.size() + " Aktywnych");
-        textCompletedHeader.setText(getString(R.string.tasks_completed)
-                + " (" + completedTasks.size() + ")");
+        textCompletedHeader.setText("Zakończone (" + completedTasks.size() + ")");
 
-        // Pusty stan – widoczny gdy brak aktywnych zadan
-        textEmptyActive.setVisibility(activeTasks.isEmpty() ? View.VISIBLE : View.GONE);
-        recyclerActive.setVisibility(activeTasks.isEmpty() ? View.GONE : View.VISIBLE);
+        // Wyświetlanie informacji o braku zadań
+        if (activeTasks.isEmpty()) {
+            textEmptyActive.setVisibility(View.VISIBLE);
+            recyclerActive.setVisibility(View.GONE);
+        } else {
+            textEmptyActive.setVisibility(View.GONE);
+            recyclerActive.setVisibility(View.VISIBLE);
+        }
     }
-
-    // ========== GESTY SWIPE ==========
-
-    private void setupSwipeGestures() {
-        // ItemTouchHelper przechwytuje gesty przesuniecia na elementach RecyclerView
-        ItemTouchHelper.SimpleCallback swipeCallback =
-                new ItemTouchHelper.SimpleCallback(0,
-                        ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
-
-                    @Override
-                    public boolean onMove(@NonNull RecyclerView recyclerView,
-                                          @NonNull RecyclerView.ViewHolder viewHolder,
-                                          @NonNull RecyclerView.ViewHolder target) {
-                        return false; // nie obslugujemy przeciagania
-                    }
-
-                    @Override
-                    public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder,
-                                         int direction) {
-                        int position = viewHolder.getAdapterPosition();
-                        Task task = activeAdapter.getTaskAt(position);
-
-                        if (direction == ItemTouchHelper.LEFT) {
-                            task.setStatus(1); // swipe w lewo = SKONCZONE
-                        } else {
-                            task.setStatus(2); // swipe w prawo = NIEUDANE
-                        }
-
-                        taskDao.update(task);
-                        loadTasks();
-                    }
-
-                    // Rysowanie kolorowego tla widocznego podczas przesuwania karty
-                    @Override
-                    public void onChildDraw(@NonNull Canvas c,
-                                            @NonNull RecyclerView recyclerView,
-                                            @NonNull RecyclerView.ViewHolder viewHolder,
-                                            float dX, float dY,
-                                            int actionState, boolean isCurrentlyActive) {
-
-                        View itemView = viewHolder.itemView;
-                        Paint paint = new Paint();
-
-                        if (dX < 0) {
-                            // Swipe w lewo – zielone tlo (skonczone)
-                            paint.setColor(ContextCompat.getColor(
-                                    requireContext(), R.color.status_done));
-                            c.drawRect(
-                                    itemView.getRight() + dX, itemView.getTop(),
-                                    itemView.getRight(), itemView.getBottom(), paint);
-                        } else if (dX > 0) {
-                            // Swipe w prawo – czerwone tlo (nieudane)
-                            paint.setColor(ContextCompat.getColor(
-                                    requireContext(), R.color.status_failed));
-                            c.drawRect(
-                                    itemView.getLeft(), itemView.getTop(),
-                                    itemView.getLeft() + dX, itemView.getBottom(), paint);
-                        }
-
-                        super.onChildDraw(c, recyclerView, viewHolder,
-                                dX, dY, actionState, isCurrentlyActive);
-                    }
-                };
-
-        // Podpiecie gestow TYLKO do listy aktywnych zadan
-        new ItemTouchHelper(swipeCallback).attachToRecyclerView(recyclerActive);
-    }
-
-    // ========== CALLBACKI ADAPTERA ==========
 
     @Override
     public void onTaskClick(Task task) {
@@ -187,11 +163,13 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskActi
     @Override
     public void onCheckboxClick(Task task) {
         if (task.getStatus() == 0) {
-            task.setStatus(1); // NIEZROBIONE -> SKONCZONE
+            // Udane
+            task.setStatus(1);
         } else {
-            task.setStatus(0); // SKONCZONE/NIEUDANE -> NIEZROBIONE
+            // Nieudane
+            task.setStatus(0);
         }
         taskDao.update(task);
-        loadTasks();
+        loadTasksFromDatabase();
     }
 }
