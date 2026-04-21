@@ -10,6 +10,7 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
@@ -76,7 +77,7 @@ public class TaskEditorActivity extends AppCompatActivity {
         btnStatusDone = findViewById(R.id.btn_status_done);
         btnConfirm = findViewById(R.id.btn_confirm);
         sectionStatus = findViewById(R.id.section_status);
-        badgeSaved = findViewById(R.id.badge_saved);
+        btnDelete = findViewById(R.id.btn_delete);
 
         // Sprawdzanie trybu
         int taskId = getIntent().getIntExtra("task_id", -1);
@@ -178,6 +179,13 @@ public class TaskEditorActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 saveTask();
+            }
+        });
+
+        btnDelete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDeleteDialog();
             }
         });
 
@@ -296,6 +304,19 @@ public class TaskEditorActivity extends AppCompatActivity {
         }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true);
         
         timePickerDialog.show();
+    }
+
+    // Usuwa zadanie z bazy danych
+    private void showDeleteDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Usunięcie zadania")
+                .setMessage("Czy na pewno chcesz usunąć to zadanie? Tej operacji nie można cofnąć.")
+                .setPositiveButton("Usuń", (dialog, which) -> {
+                    taskDao.deleteById(currentTask.getId());
+                    finish();
+                })
+                .setNegativeButton(R.string.btn_cancel, null)
+                .show();
     }
 
     // Zapisuje zadanie do bazy danych
